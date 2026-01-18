@@ -95,7 +95,7 @@
             <el-col :span="12" v-if="isAdmin">
               <div class="action-card action-card-purple" @click="goTo('/admin/users')">
                 <el-icon :size="24"><UserFilled /></el-icon>
-                <span>customer management</span>
+                <span>user management</span>
               </div>
             </el-col>
           </el-row>
