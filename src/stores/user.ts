@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
-import mockHandlers from '@/mock'
+import { authApi } from '@/api'  // Changed from mockHandlers
 
 export const useUserStore = defineStore('user', () => {
   // State
@@ -22,7 +22,7 @@ export const useUserStore = defineStore('user', () => {
   async function login(email: string, password: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.login({ email, password })
+      const response = await authApi.login({ email, password })
       if (response.code === 200 && response.data) {
         const { token: newToken, user: newUser } = response.data
         token.value = newToken
@@ -42,7 +42,9 @@ export const useUserStore = defineStore('user', () => {
   async function logout() {
     loading.value = true
     try {
-      await mockHandlers.logout()
+      await authApi.logout()
+    } catch (e) {
+      console.error(e)
     } finally {
       token.value = null
       user.value = null
@@ -56,14 +58,15 @@ export const useUserStore = defineStore('user', () => {
     
     loading.value = true
     try {
-      const response = await mockHandlers.getCurrentUser()
+      const response = await authApi.getCurrentUser()
       if (response.code === 200 && response.data) {
         user.value = response.data
       }
     } catch (error) {
       console.error('Fetch user error:', error)
-      token.value = null
-      localStorage.removeItem('token')
+      // Only clear token if 401/403 (handled in interceptor usually, but here as safety)
+      // token.value = null
+      // localStorage.removeItem('token')
     } finally {
       loading.value = false
     }
@@ -73,13 +76,11 @@ export const useUserStore = defineStore('user', () => {
     user.value = newUser
   }
 
-  // SSO Login - No password required, authentication handled by external SSO provider
-  async function loginWithSSO(email: string) {
+  // SSO Login - Authenticate with Google ID Token
+  async function loginWithSSO(ssoToken: string) {
     loading.value = true
     try {
-      // In production, the SSO provider would return a token after successful authentication
-      // Here we simulate SSO by calling the mock handler with just the email
-      const response = await mockHandlers.ssoLogin({ email })
+      const response = await authApi.loginWithSSO(ssoToken)
       if (response.code === 200 && response.data) {
         const { token: newToken, user: newUser } = response.data
         token.value = newToken
