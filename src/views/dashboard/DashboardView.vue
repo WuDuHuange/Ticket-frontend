@@ -493,68 +493,99 @@ function calculateCategoryDistribution() {
 }
 
 function calculateTicketTrend() {
-  const tickets = allTicketsForStats.value
-  const now = new Date()
-  
-  console.log('Calculating ticket trend, total tickets:', tickets.length)
+  const tickets = allTicketsForStats.value;
+  const now = new Date();
+
+  console.log("Calculating ticket trend, total tickets:", tickets.length);
   if (tickets.length > 0 && tickets[0]) {
-    console.log('First ticket createdAt:', tickets[0].createdAt, 'parsed:', new Date(tickets[0].createdAt || ''))
+    console.log(
+      "First ticket createdAt:",
+      tickets[0].createdAt,
+      "parsed:",
+      new Date(tickets[0].createdAt || "")
+    );
   }
-  
-  if (trendTab.value === 'monthly') {
+
+  if (trendTab.value === "monthly") {
     // Get last 6 months
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const labels: string[] = []
-    const counts: number[] = []
-    
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const labels = [];
+    const counts = [];
+
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
-      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59)
-      
-      const monthIndex = date.getMonth()
-      labels.push(monthNames[monthIndex] || 'N/A')
-      
-      const count = tickets.filter(t => {
-        const created = new Date(t.createdAt)
-        return created >= monthStart && created <= monthEnd
-      }).length
-      
-      counts.push(count)
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      const monthEnd = new Date(
+        date.getFullYear(),
+        date.getMonth() + 1,
+        0,
+        23,
+        59,
+        59
+      );
+
+      console.log(
+        `Month: ${monthNames[date.getMonth()]}, Start: ${monthStart}, End: ${monthEnd}`
+      );
+
+      const count = tickets.filter((t) => {
+        const created = new Date(t.createdAt);
+        return created >= monthStart && created <= monthEnd;
+      }).length;
+
+      counts.push(count);
+      labels.push(monthNames[date.getMonth()] || "N/A");
     }
-    
-    console.log('Monthly counts:', counts, 'labels:', labels)
-    
+
+    console.log("Monthly counts:", counts, "labels:", labels);
+
     // Normalize to percentages for display (minimum 5% for visibility)
-    const maxCount = Math.max(...counts, 1)
-    trendData.value = counts.map(c => {
-      if (c === 0) return 0
-      return Math.max(Math.round((c / maxCount) * 100), 5)
-    })
-    trendLabels.value = labels
+    const maxCount = Math.max(...counts, 1);
+    trendData.value = counts.map((c) => {
+      if (c === 0) return 0;
+      return Math.max(Math.round((c / maxCount) * 100), 5);
+    });
+    trendLabels.value = labels;
   } else {
     // Quarterly view
-    const labels: string[] = ['Q1', 'Q2', 'Q3', 'Q4']
-    const counts: number[] = [0, 0, 0, 0]
-    
-    tickets.forEach(t => {
-      const created = new Date(t.createdAt)
+    const labels = ["Q1", "Q2", "Q3", "Q4"];
+    const counts = [0, 0, 0, 0];
+
+    tickets.forEach((t) => {
+      const created = new Date(t.createdAt);
       if (created.getFullYear() === now.getFullYear()) {
-        const quarter = Math.floor(created.getMonth() / 3)
+        const quarter = Math.floor(created.getMonth() / 3);
         if (quarter >= 0 && quarter < counts.length) {
-          (counts as number[])[quarter] = ((counts as number[])[quarter] || 0) + 1
+          counts[quarter] = (counts[quarter] || 0) + 1;
         }
       }
-    })
-    
-    console.log('Quarterly counts:', counts)
-    
-    const maxCount = Math.max(...counts, 1)
-    trendData.value = [...counts.map(c => {
-      if (c === 0) return 0
-      return Math.max(Math.round((c / maxCount) * 100), 5)
-    }), 0, 0]
-    trendLabels.value = [...labels, '', '']
+    });
+
+    console.log("Quarterly counts:", counts);
+
+    const maxCount = Math.max(...counts, 1);
+    trendData.value = [
+      ...counts.map((c) => {
+        if (c === 0) return 0;
+        return Math.max(Math.round((c / maxCount) * 100), 5);
+      }),
+      0,
+      0,
+    ];
+    trendLabels.value = [...labels, "", ""];
   }
 }
 
@@ -907,12 +938,17 @@ function getChangeClass(change: number, increaseIsBad: boolean): string {
           flex-direction: column;
           align-items: center;
           gap: 8px;
+          /* Ensure the wrapper has explicit height so child .bar percentage heights work */
+          height: 100%;
+          justify-content: flex-end;
           
           .bar {
             width: 40px;
             background: linear-gradient(180deg, #409eff 0%, #66b1ff 100%);
             border-radius: 4px 4px 0 0;
             transition: height 0.3s;
+            /* Ensure a visible minimum so tiny percentages are still perceptible */
+            min-height: 4px;
           }
           
           .bar-label {
