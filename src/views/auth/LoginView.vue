@@ -27,7 +27,8 @@
         </div>
       </div>
       
-      <!-- Demo Section - Only for development/testing -->
+      <!-- Demo Section - Only for development/testing - HIDDEN for Production/Integration -->
+      <!--
       <el-divider>{{ $t('auth.demoMode') }}</el-divider>
       
       <div class="demo-section">
@@ -47,6 +48,7 @@
           </el-button>
         </el-space>
       </div>
+      -->
       
     </div>
   </div>
