@@ -51,32 +51,32 @@ export const authApi = {
 export const userApi = {
   // Get user list (admin only)
   getUsers(params: { page: number; pageSize: number; keyword?: string; role?: string }) {
-    return http.get<PaginatedResponse<User>>('/users', { params })
+    return http.get<PaginatedResponse<User>>('/users/', { params })
   },
   
   // Get user by ID
   getUserById(id: string) {
-    return http.get<User>(`/users/${id}`)
+    return http.get<User>(`/users/${id}/`)
   },
   
   // Update user
   updateUser(id: string, data: Partial<User>) {
-    return http.put<User>(`/users/${id}`, data)
+    return http.put<User>(`/users/${id}/`, data)
   },
   
   // Update user role
   updateUserRole(id: string, role: string) {
-    return http.post<User>(`/users/${id}/change-role`, { role })
+    return http.post<User>(`/users/${id}/change-role/`, { role })
   },
   
   // Deactivate/Activate user (Backend uses toggle)
   deactivateUser(id: string) {
-    return http.post<User>(`/users/${id}/toggle-active`)
+    return http.post<User>(`/users/${id}/toggle-active/`)
   },
   
   // Activate user (Backend uses toggle, same endpoint)
   activateUser(id: string) {
-    return http.post<User>(`/users/${id}/toggle-active`)
+    return http.post<User>(`/users/${id}/toggle-active/`)
   },
   
   // Update profile
@@ -195,6 +195,29 @@ export const ticketApi = {
   }
 }
 
+// ==================== Category API ====================
+export const categoryApi = {
+  // Get all categories
+  getCategories() {
+    return http.get<TicketCategory[]>('/tickets/categories')
+  },
+  
+  // Create category
+  createCategory(data: { name: string; description?: string; parent?: string | null }) {
+    return http.post<TicketCategory>('/tickets/categories/create', data)
+  },
+  
+  // Update category
+  updateCategory(id: string, data: { name?: string; description?: string; parent?: string | null }) {
+    return http.put<TicketCategory>(`/tickets/categories/${id}`, data)
+  },
+  
+  // Delete category
+  deleteCategory(id: string) {
+    return http.delete<void>(`/tickets/categories/${id}`)
+  }
+}
+
 // ==================== Knowledge Base API ====================
 export const knowledgeApi = {
   // Get article list
@@ -203,7 +226,7 @@ export const knowledgeApi = {
     pageSize: number
     filter?: ArticleFilter
   }) {
-    return http.get<PaginatedResponse<KnowledgeArticle>>('/knowledge/articles', { params })
+    return http.get<PaginatedResponse<KnowledgeArticle>>('/kb/articles/', { params })
   },
   
   // Get published articles (for end users)
@@ -215,62 +238,64 @@ export const knowledgeApi = {
     tags?: string[]
     sortBy?: 'relevance' | 'updated'
   }) {
-    return http.get<PaginatedResponse<KnowledgeArticle>>('/knowledge/articles/published', { params })
+    // Mapping to main articles list, adding status=published to ensure consistent behavior
+    const queryParams = { ...params, status: 'published' }
+    return http.get<PaginatedResponse<KnowledgeArticle>>('/kb/articles/', { params: queryParams })
   },
   
   // Get FAQ articles
   getFAQArticles() {
-    return http.get<KnowledgeArticle[]>('/knowledge/articles/faq')
+    return http.get<KnowledgeArticle[]>('/kb/faq/')
   },
   
   // Get suggested articles (during ticket creation)
   getSuggestedArticles(query: string) {
-    return http.get<KnowledgeArticle[]>('/knowledge/articles/suggest', { params: { query } })
+    return http.get<KnowledgeArticle[]>('/kb/suggestions/', { params: { query } })
   },
   
   // Get article by ID
   getArticleById(id: string) {
-    return http.get<KnowledgeArticle>(`/knowledge/articles/${id}`)
+    return http.get<KnowledgeArticle>(`/kb/articles/${id}/`)
   },
   
   // Create article
   createArticle(data: ArticleCreateDTO) {
-    return http.post<KnowledgeArticle>('/knowledge/articles', data)
+    return http.post<KnowledgeArticle>('/kb/articles/', data)
   },
   
   // Update article
   updateArticle(id: string, data: Partial<ArticleCreateDTO>) {
-    return http.put<KnowledgeArticle>(`/knowledge/articles/${id}`, data)
+    return http.put<KnowledgeArticle>(`/kb/articles/${id}/`, data)
   },
   
   // Publish article
   publishArticle(id: string) {
-    return http.patch<KnowledgeArticle>(`/knowledge/articles/${id}/publish`)
+    return http.post<KnowledgeArticle>(`/kb/articles/${id}/publish/`)
   },
   
   // Archive article
   archiveArticle(id: string) {
-    return http.patch<KnowledgeArticle>(`/knowledge/articles/${id}/archive`)
+    return http.post<KnowledgeArticle>(`/kb/articles/${id}/archive/`)
   },
   
   // Delete article
   deleteArticle(id: string) {
-    return http.delete<void>(`/knowledge/articles/${id}`)
+    return http.delete<void>(`/kb/articles/${id}/`)
   },
   
   // Mark article as helpful
   markHelpful(id: string, helpful: boolean) {
-    return http.post<void>(`/knowledge/articles/${id}/helpful`, { helpful })
+    return http.post<void>(`/kb/articles/${id}/feedback/`, { helpful })
   },
   
   // Get categories
   getCategories() {
-    return http.get<string[]>('/knowledge/categories')
+    return http.get<string[]>('/kb/categories/')
   },
   
   // Get popular tags
   getTags() {
-    return http.get<string[]>('/knowledge/tags')
+    return http.get<string[]>('/kb/tags/')
   }
 }
 
@@ -278,32 +303,32 @@ export const knowledgeApi = {
 export const teamApi = {
   // Get team list
   getTeams() {
-    return http.get<Team[]>('/teams')
+    return http.get<Team[]>('/teams/')
   },
   
   // Get team by ID
   getTeamById(id: string) {
-    return http.get<Team>(`/teams/${id}`)
+    return http.get<Team>(`/teams/${id}/`)
   },
   
   // Create team
   createTeam(data: { name: string; description?: string }) {
-    return http.post<Team>('/teams', data)
+    return http.post<Team>('/teams/', data)
   },
   
   // Update team
   updateTeam(id: string, data: { name?: string; description?: string }) {
-    return http.put<Team>(`/teams/${id}`, data)
+    return http.put<Team>(`/teams/${id}/`, data)
   },
   
   // Delete team
   deleteTeam(id: string) {
-    return http.delete<void>(`/teams/${id}`)
+    return http.delete<void>(`/teams/${id}/`)
   },
   
   // Add team member
   addTeamMember(teamId: string, userId: string, role: 'leader' | 'member') {
-    return http.post<void>(`/teams/${teamId}/members`, { userId, role })
+    return http.post<void>(`/teams/${teamId}/members/`, { userId, role })
   },
   
   // Remove team member
@@ -363,12 +388,22 @@ export const analyticsApi = {
 export const slaApi = {
   // Get SLA configurations
   getSLAConfigs() {
-    return http.get<SLAConfig[]>('/sla/configs')
+    return http.get<SLAConfig[]>('/sla/configs/')
+  },
+  
+  // Create SLA configuration
+  createSLAConfig(data: Partial<SLAConfig>) {
+    return http.post<SLAConfig>('/sla/configs/', data)
   },
   
   // Update SLA configuration
   updateSLAConfig(id: string, data: Partial<SLAConfig>) {
-    return http.put<SLAConfig>(`/sla/configs/${id}`, data)
+    return http.put<SLAConfig>(`/sla/configs/${id}/`, data)
+  },
+  
+  // Delete SLA configuration
+  deleteSLAConfig(id: string) {
+    return http.delete(`/sla/configs/${id}/`)
   }
 }
 
@@ -383,7 +418,7 @@ export const auditApi = {
     dateFrom?: string
     dateTo?: string
   }) {
-    return http.get<PaginatedResponse<AuditLog>>('/audit/logs', { params })
+    return http.get<PaginatedResponse<AuditLog>>('/audit-logs/', { params })
   }
 }
 

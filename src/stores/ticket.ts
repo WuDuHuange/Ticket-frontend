@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Ticket, TicketCategory, PaginatedResponse } from '@/types'
-import mockHandlers from '@/mock'
+import type { Ticket, TicketCategory, PaginatedResponse, TicketCreateDTO } from '@/types'
+import { ticketApi } from '@/api'
 
 export const useTicketStore = defineStore('ticket', () => {
   // State
@@ -32,7 +32,8 @@ export const useTicketStore = defineStore('ticket', () => {
     loading.value = true
     try {
       const mergedFilter = { ...filter.value, ...filterParams }
-      const response = await mockHandlers.getTickets({ page, pageSize, filter: mergedFilter })
+      // Assuming api expects filter object structure or specific params
+      const response = await ticketApi.getTickets({ page, pageSize, filter: mergedFilter })
       
       if (response.code === 200 && response.data) {
         const data = response.data as PaginatedResponse<Ticket>
@@ -54,7 +55,7 @@ export const useTicketStore = defineStore('ticket', () => {
   async function fetchMyTickets(page = 1, pageSize = 10, status?: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.getMyTickets({ page, pageSize, status })
+      const response = await ticketApi.getMyTickets({ page, pageSize, status })
       
       if (response.code === 200 && response.data) {
         const data = response.data as PaginatedResponse<Ticket>
@@ -76,7 +77,7 @@ export const useTicketStore = defineStore('ticket', () => {
   async function fetchAssignedTickets(page = 1, pageSize = 10, status?: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.getAssignedTickets({ page, pageSize, status })
+      const response = await ticketApi.getAssignedTickets({ page, pageSize, status })
       
       if (response.code === 200 && response.data) {
         const data = response.data as PaginatedResponse<Ticket>
@@ -98,7 +99,7 @@ export const useTicketStore = defineStore('ticket', () => {
   async function fetchTicketById(id: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.getTicketById(id)
+      const response = await ticketApi.getTicketById(id)
       
       if (response.code === 200 && response.data) {
         currentTicket.value = response.data
@@ -116,7 +117,8 @@ export const useTicketStore = defineStore('ticket', () => {
   async function createTicket(data: Record<string, unknown>) {
     loading.value = true
     try {
-      const response = await mockHandlers.createTicket(data)
+      // Cast to TicketCreateDTO
+      const response = await ticketApi.createTicket(data as unknown as TicketCreateDTO)
       
       if (response.code === 200 && response.data) {
         return { success: true, ticket: response.data }
@@ -133,7 +135,7 @@ export const useTicketStore = defineStore('ticket', () => {
   async function updateTicketStatus(id: string, status: string, comment?: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.updateTicketStatus(id, status, comment)
+      const response = await ticketApi.updateTicketStatus(id, status, comment)
       
       if (response.code === 200 && response.data) {
         currentTicket.value = response.data
@@ -156,7 +158,7 @@ export const useTicketStore = defineStore('ticket', () => {
   async function addComment(ticketId: string, content: string, isInternal = false) {
     loading.value = true
     try {
-      const response = await mockHandlers.addComment(ticketId, { content, isInternal })
+      const response = await ticketApi.addComment(ticketId, { content, isInternal })
       
       if (response.code === 200 && response.data) {
         // Refresh current ticket to get updated comments
@@ -174,7 +176,7 @@ export const useTicketStore = defineStore('ticket', () => {
 
   async function fetchCategories() {
     try {
-      const response = await mockHandlers.getCategories()
+      const response = await ticketApi.getCategories()
       
       if (response.code === 200 && response.data) {
         categories.value = response.data

@@ -48,31 +48,39 @@
       <el-tab-pane :label="$t('admin.slaConfiguration')" name="sla">
         <el-card>
           <template #header>
-            <div class="card-header">
-              <span>{{ $t('admin.slaConfiguration') }}</span>
-              <el-button type="primary" size="small" @click="showAddSLA">{{ $t('admin.addSLA') }}</el-button>
-            </div>
+            <span>{{ $t('admin.slaConfiguration') }}</span>
           </template>
           
           <el-table :data="slaConfigs" v-loading="loading">
-            <el-table-column prop="name" :label="$t('common.name')" width="150" />
-            <el-table-column prop="priority" :label="$t('common.priority')" width="100">
+            <el-table-column prop="priority" :label="$t('common.priority')" width="120">
               <template #default="{ row }">
                 <el-tag :type="getPriorityType(row.priority)" size="small">
                   {{ row.priority }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="responseTime" :label="$t('admin.responseTime')" width="130" />
-            <el-table-column prop="resolutionTime" :label="$t('admin.resolutionTime')" width="130" />
-            <el-table-column prop="escalationTime" :label="$t('admin.escalationTime')" width="130" />
+            <el-table-column prop="responseTime" :label="$t('admin.responseTime')" width="150">
+              <template #default="{ row }">
+                {{ row.responseTime }} {{ $t('common.hours') }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="resolutionTime" :label="$t('admin.resolutionTime')" width="150">
+              <template #default="{ row }">
+                {{ row.resolutionTime }} {{ $t('common.hours') }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="description" :label="$t('common.description')" min-width="200" />
+            <el-table-column prop="isActive" :label="$t('common.status')" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.isActive ? 'success' : 'info'" size="small">
+                  {{ row.isActive ? $t('common.active') : $t('common.inactive') }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column :label="$t('common.actions')" width="120">
               <template #default="{ row }">
                 <el-button text type="primary" @click="editSLA(row)">
                   <el-icon><Edit /></el-icon>
-                </el-button>
-                <el-button text type="danger" @click="deleteSLA(row)">
-                  <el-icon><Delete /></el-icon>
                 </el-button>
               </template>
             </el-table-column>
@@ -169,6 +177,44 @@
         </el-card>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- Edit SLA Dialog -->
+    <el-dialog v-model="slaDialogVisible" :title="$t('admin.editSLA')" width="500px">
+      <el-form :model="slaForm" :rules="slaRules" ref="slaFormRef" label-width="160px">
+        <el-form-item :label="$t('common.priority')" prop="priority">
+          <el-select v-model="slaForm.priority" style="width: 100%" disabled>
+            <el-option label="Low" value="low" />
+            <el-option label="Medium" value="medium" />
+            <el-option label="High" value="high" />
+            <el-option label="Urgent" value="urgent" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item :label="$t('admin.responseTime')" prop="responseTime">
+          <el-input-number v-model="slaForm.responseTime" :min="1" :max="720" style="width: 100%" />
+          <span class="form-unit">{{ $t('common.hours') }}</span>
+        </el-form-item>
+        
+        <el-form-item :label="$t('admin.resolutionTime')" prop="resolutionTime">
+          <el-input-number v-model="slaForm.resolutionTime" :min="1" :max="720" style="width: 100%" />
+          <span class="form-unit">{{ $t('common.hours') }}</span>
+        </el-form-item>
+        
+        <el-form-item :label="$t('common.description')" prop="description">
+          <el-input v-model="slaForm.description" type="textarea" :rows="3" />
+        </el-form-item>
+        
+        <el-form-item :label="$t('common.active')" prop="isActive">
+          <el-switch v-model="slaForm.isActive" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="slaDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="submitSLA" :loading="slaSubmitting">
+          {{ $t('common.save') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -177,10 +223,10 @@ import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores'
 import { setLocale, getLocale } from '@/i18n'
-import mockHandlers from '@/mock'
+import { slaApi } from '@/api'
 import type { SLAConfig } from '@/types'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Delete } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { Edit } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
 const uiStore = useUIStore()
@@ -188,6 +234,31 @@ const uiStore = useUIStore()
 const loading = ref(false)
 const activeTab = ref('general')
 const slaConfigs = ref<SLAConfig[]>([])
+
+// SLA dialog state
+const slaDialogVisible = ref(false)
+const slaSubmitting = ref(false)
+const slaFormRef = ref<FormInstance>()
+const slaForm = reactive({
+  id: '',
+  priority: 'medium' as string,
+  responseTime: 8,
+  resolutionTime: 24,
+  description: '',
+  isActive: true
+})
+
+const slaRules: FormRules = {
+  priority: [
+    { required: true, message: 'Please select priority', trigger: 'change' }
+  ],
+  responseTime: [
+    { required: true, message: 'Please enter response time', trigger: 'blur' }
+  ],
+  resolutionTime: [
+    { required: true, message: 'Please enter resolution time', trigger: 'blur' }
+  ]
+}
 
 const generalSettings = reactive({
   systemName: 'IT Service Desk',
@@ -228,11 +299,19 @@ async function loadSLAConfigs() {
   loading.value = true
   
   try {
-    const response = await mockHandlers.getSLAConfigs()
+    const response = await slaApi.getSLAConfigs()
+    console.log('Load SLA configs response:', response)
     
     if (response.code === 200 && response.data) {
       slaConfigs.value = response.data
+      console.log('Loaded SLA configs:', slaConfigs.value)
+    } else {
+      console.error('Failed to load SLA configs:', response)
+      ElMessage.error('Failed to load SLA configurations')
     }
+  } catch (error) {
+    console.error('Failed to load SLA configs:', error)
+    ElMessage.error('Failed to load SLA configurations')
   } finally {
     loading.value = false
   }
@@ -257,26 +336,54 @@ function saveGeneralSettings() {
   ElMessage.success(t('messages.saveSuccess'))
 }
 
-function showAddSLA() {
-  ElMessage.info('Add SLA dialog would open here')
-}
-
 function editSLA(sla: SLAConfig) {
-  ElMessage.info(`Edit SLA for priority: ${sla.priority}`)
+  slaForm.id = sla.id
+  slaForm.priority = sla.priority
+  slaForm.responseTime = sla.responseTime
+  slaForm.resolutionTime = sla.resolutionTime
+  slaForm.description = sla.description || ''
+  slaForm.isActive = sla.isActive !== false
+  slaDialogVisible.value = true
 }
 
-async function deleteSLA(sla: SLAConfig) {
-  try {
-    await ElMessageBox.confirm(
-      `Are you sure you want to delete SLA for "${sla.priority}" priority?`,
-      'Delete SLA',
-      { type: 'warning' }
-    )
+async function submitSLA() {
+  if (!slaFormRef.value) return
+  
+  await slaFormRef.value.validate(async (valid) => {
+    if (!valid) return
     
-    ElMessage.success(`SLA for ${sla.priority} deleted (mock)`)
-  } catch {
-    // User cancelled
-  }
+    slaSubmitting.value = true
+    
+    try {
+      const slaData = {
+        priority: slaForm.priority,
+        responseTime: slaForm.responseTime,
+        resolutionTime: slaForm.resolutionTime,
+        description: slaForm.description,
+        isActive: slaForm.isActive
+      }
+      
+      console.log('Updating SLA data:', slaData, 'id:', slaForm.id)
+      
+      // Update SLA via API
+      const response = await slaApi.updateSLAConfig(slaForm.id, slaData)
+      console.log('Update SLA response:', response)
+      
+      if (response.code === 200) {
+        ElMessage.success(t('messages.saveSuccess'))
+        slaDialogVisible.value = false
+        // Reload after dialog closes to ensure fresh data
+        await loadSLAConfigs()
+      } else {
+        throw new Error(response.message || 'Failed to update SLA')
+      }
+    } catch (error: any) {
+      console.error('Failed to save SLA:', error)
+      ElMessage.error(error.message || 'Failed to save SLA')
+    } finally {
+      slaSubmitting.value = false
+    }
+  })
 }
 
 function testEmailConnection() {

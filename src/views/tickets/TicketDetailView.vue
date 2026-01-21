@@ -79,15 +79,17 @@
             <div v-if="ticket.attachments && ticket.attachments.length > 0" class="attachments-section">
               <h3>{{ $t('tickets.attachments') }}</h3>
               <div class="attachment-list">
-                <div
+                <a
                   v-for="attachment in ticket.attachments"
                   :key="attachment.id"
                   class="attachment-item"
+                  :href="attachment.url"
+                  target="_blank"
                 >
                   <el-icon><Document /></el-icon>
                   <span>{{ attachment.filename }}</span>
-                  <span class="attachment-size">{{ formatFileSize(attachment.size) }}</span>
-                </div>
+                  <span class="attachment-size">{{ formatFileSize(attachment.fileSize) }}</span>
+                </a>
               </div>
             </div>
           </el-card>
@@ -236,7 +238,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTicketStore, useUserStore, useUIStore } from '@/stores'
@@ -295,6 +297,20 @@ onMounted(async () => {
       { label: t('nav.tickets'), path: '/my-tickets' },
       { label: ticket.value.id }
     ])
+  }
+})
+
+// Watch for route changes to reload ticket data
+watch(() => route.params.id, async (newId) => {
+  if (newId) {
+    await ticketStore.fetchTicketById(newId as string)
+    if (ticket.value) {
+      uiStore.setBreadcrumbs([
+        { label: t('nav.dashboard'), path: '/' },
+        { label: t('nav.tickets'), path: '/my-tickets' },
+        { label: ticket.value.id }
+      ])
+    }
   }
 })
 

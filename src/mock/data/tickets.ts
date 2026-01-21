@@ -26,7 +26,7 @@ export const mockTickets: Ticket[] = [
         id: 'att-001',
         filename: 'wifi_error_screenshot.png',
         url: '/mock/attachments/wifi_error.png',
-        size: 245000,
+        fileSize: 245000,
         mimeType: 'image/png',
         uploadedAt: '2026-01-14T09:30:00Z'
       }
@@ -155,7 +155,7 @@ export const mockTickets: Ticket[] = [
         id: 'att-002',
         filename: 'printer_queue.png',
         url: '/mock/attachments/printer_queue.png',
-        size: 156000,
+        fileSize: 156000,
         mimeType: 'image/png',
         uploadedAt: '2026-01-15T08:00:00Z'
       }

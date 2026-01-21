@@ -41,15 +41,16 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     const res = response.data as ApiResponse<unknown>
     
-    // Check business logic errors
-    if (res.code !== 0 && res.code !== 200) {
+    // Check business logic errors - accept 0, 200, 201 as success codes
+    const isSuccessCode = res.code === 0 || (res.code >= 200 && res.code < 300)
+    if (!isSuccessCode) {
       ElMessage.error(res.message || 'Request failed')
       
       // Handle specific error codes
       if (res.code === 401) {
         // Token expired or invalid
         const userStore = useUserStore()
-        userStore.logout()
+        userStore.resetState() // Don't call API loop
         router.push('/login')
       }
       
@@ -67,10 +68,13 @@ apiClient.interceptors.response.use(
       
       switch (status) {
         case 401:
-          ElMessage.error('Authentication failed. Please login again.')
-          const userStore = useUserStore()
-          userStore.logout()
-          router.push('/login')
+          // Check if we are already logging out to avoid infinite loop
+          if (!error.config.url?.endsWith('logout')) {
+            ElMessage.error('Authentication failed. Please login again.')
+            const userStore = useUserStore()
+            userStore.resetState()
+            router.push('/login')
+          }
           break
         case 403:
           ElMessage.error('Access denied. You do not have permission.')

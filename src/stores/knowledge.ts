@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { KnowledgeArticle, PaginatedResponse } from '@/types'
-import mockHandlers from '@/mock'
+import type { KnowledgeArticle, PaginatedResponse, ArticleCreateDTO } from '@/types'
+import { knowledgeApi } from '@/api'
 
 export const useKnowledgeStore = defineStore('knowledge', () => {
   // State
@@ -29,7 +29,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   async function fetchPublicArticles(page = 1, pageSize = 10, keyword?: string, category?: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.getPublishedArticles({ page, pageSize, keyword, category })
+      const response = await knowledgeApi.getPublishedArticles({ page, pageSize, keyword, category })
       
       if (response.code === 200 && response.data) {
         const data = response.data as PaginatedResponse<KnowledgeArticle>
@@ -52,7 +52,8 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     loading.value = true
     try {
       const mergedFilter = { ...filter.value, ...filterParams }
-      const response = await mockHandlers.getArticles({ page, pageSize, filter: mergedFilter })
+      // Assuming api filter is compatible or needs adjustment
+      const response = await knowledgeApi.getArticles({ page, pageSize, filter: mergedFilter })
       
       if (response.code === 200 && response.data) {
         const data = response.data as PaginatedResponse<KnowledgeArticle>
@@ -74,7 +75,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   async function fetchFAQArticles() {
     loading.value = true
     try {
-      const response = await mockHandlers.getFAQArticles()
+      const response = await knowledgeApi.getFAQArticles()
       
       if (response.code === 200 && response.data) {
         faqArticles.value = response.data
@@ -93,7 +94,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }
     
     try {
-      const response = await mockHandlers.getSuggestedArticles(query)
+      const response = await knowledgeApi.getSuggestedArticles(query)
       
       if (response.code === 200 && response.data) {
         suggestedArticles.value = response.data
@@ -106,7 +107,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   async function fetchArticleById(id: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.getArticleById(id)
+      const response = await knowledgeApi.getArticleById(id)
       
       if (response.code === 200 && response.data) {
         currentArticle.value = response.data
@@ -124,7 +125,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   async function createArticle(data: Record<string, unknown>) {
     loading.value = true
     try {
-      const response = await mockHandlers.createArticle(data)
+      const response = await knowledgeApi.createArticle(data as unknown as ArticleCreateDTO)
       
       if (response.code === 200 && response.data) {
         return { success: true, article: response.data }
@@ -141,7 +142,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   async function updateArticle(id: string, data: Record<string, unknown>) {
     loading.value = true
     try {
-      const response = await mockHandlers.updateArticle(id, data)
+      const response = await knowledgeApi.updateArticle(id, data as Partial<ArticleCreateDTO>)
       
       if (response.code === 200 && response.data) {
         currentArticle.value = response.data
@@ -164,7 +165,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   async function publishArticle(id: string) {
     loading.value = true
     try {
-      const response = await mockHandlers.publishArticle(id)
+      const response = await knowledgeApi.publishArticle(id)
       
       if (response.code === 200 && response.data) {
         currentArticle.value = response.data
@@ -185,7 +186,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
 
   async function fetchCategories() {
     try {
-      const response = await mockHandlers.getKBCategories()
+      const response = await knowledgeApi.getCategories()
       
       if (response.code === 200 && response.data) {
         categories.value = response.data
@@ -197,7 +198,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
 
   async function fetchTags() {
     try {
-      const response = await mockHandlers.getTags()
+      const response = await knowledgeApi.getTags()
       
       if (response.code === 200 && response.data) {
         tags.value = response.data

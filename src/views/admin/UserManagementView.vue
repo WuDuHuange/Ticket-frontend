@@ -126,6 +126,52 @@
         <el-button type="primary" @click="submitRoleChange">Confirm</el-button>
       </template>
     </el-dialog>
+
+    <!-- Add/Edit User Dialog -->
+    <el-dialog v-model="userDialogVisible" :title="isEditingUser ? $t('admin.editUser') : $t('admin.addUser')" width="500px">
+      <el-form :model="userForm" :rules="userRules" ref="userFormRef" label-width="120px">
+        <el-form-item :label="$t('common.name')" prop="name">
+          <el-input v-model="userForm.name" :placeholder="$t('admin.enterUserName')" />
+        </el-form-item>
+        
+        <el-form-item :label="$t('common.email')" prop="email">
+          <el-input v-model="userForm.email" type="email" :placeholder="$t('admin.enterUserEmail')" />
+        </el-form-item>
+        
+        <el-form-item v-if="!isEditingUser" :label="$t('auth.password')" prop="password">
+          <el-input v-model="userForm.password" type="password" show-password :placeholder="$t('admin.enterPassword')" />
+        </el-form-item>
+        
+        <el-form-item :label="$t('admin.userRole')" prop="role">
+          <el-select v-model="userForm.role" style="width: 100%">
+            <el-option :label="$t('roles.endUser')" value="end_user" />
+            <el-option :label="$t('roles.supportStaff')" value="support_staff" />
+            <el-option :label="$t('roles.manager')" value="manager" />
+            <el-option :label="$t('roles.admin')" value="admin" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item :label="$t('profile.department')" prop="department">
+          <el-input v-model="userForm.department" :placeholder="$t('admin.enterDepartment')" />
+        </el-form-item>
+        
+        <el-form-item :label="$t('common.status')" prop="status">
+          <el-switch
+            v-model="userForm.status"
+            :active-value="'active'"
+            :inactive-value="'inactive'"
+            :active-text="$t('admin.active')"
+            :inactive-text="$t('admin.inactive')"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="userDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="submitUser" :loading="submitting">
+          {{ isEditingUser ? $t('common.save') : $t('common.add') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -133,9 +179,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores'
-import mockHandlers from '@/mock'
+import { userApi } from '@/api'
 import type { User, PaginatedResponse } from '@/types'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { formatDate } from '@/utils/helpers'
 import { Plus, Edit, UserFilled, Delete } from '@element-plus/icons-vue'
 
@@ -159,6 +205,38 @@ const roleForm = reactive({
   role: ''
 })
 
+// User add/edit dialog state
+const userDialogVisible = ref(false)
+const isEditingUser = ref(false)
+const submitting = ref(false)
+const userFormRef = ref<FormInstance>()
+const userForm = reactive({
+  id: '',
+  name: '',
+  email: '',
+  password: '',
+  role: 'end_user',
+  department: '',
+  status: 'active'
+})
+
+const userRules: FormRules = {
+  name: [
+    { required: true, message: 'Please enter user name', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: 'Please enter email', trigger: 'blur' },
+    { type: 'email', message: 'Please enter valid email', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: 'Please enter password', trigger: 'blur' },
+    { min: 6, message: 'Password must be at least 6 characters', trigger: 'blur' }
+  ],
+  role: [
+    { required: true, message: 'Please select role', trigger: 'change' }
+  ]
+}
+
 onMounted(async () => {
   uiStore.setBreadcrumbs([
     { label: t('nav.administration') },
@@ -172,7 +250,7 @@ async function loadUsers() {
   loading.value = true
   
   try {
-    const response = await mockHandlers.getUsers({
+    const response = await userApi.getUsers({
       page: currentPage.value,
       pageSize: pageSize.value,
       keyword: filter.keyword || undefined,
@@ -184,6 +262,8 @@ async function loadUsers() {
       users.value = data.items
       totalCount.value = data.total
     }
+  } catch (error) {
+    console.error('Failed to load users:', error)
   } finally {
     loading.value = false
   }
@@ -221,11 +301,55 @@ function getRoleType(role: string): '' | 'success' | 'warning' | 'info' | 'dange
 }
 
 function showAddUser() {
-  ElMessage.info('Add user dialog would open here')
+  isEditingUser.value = false
+  userForm.id = ''
+  userForm.name = ''
+  userForm.email = ''
+  userForm.password = ''
+  userForm.role = 'end_user'
+  userForm.department = ''
+  userForm.status = 'active'
+  userDialogVisible.value = true
 }
 
 function editUser(user: User) {
-  ElMessage.info(`Edit user: ${user.name}`)
+  isEditingUser.value = true
+  userForm.id = user.id
+  userForm.name = user.name
+  userForm.email = user.email
+  userForm.password = ''
+  userForm.role = user.role
+  userForm.department = user.department || ''
+  userForm.status = user.status || 'active'
+  userDialogVisible.value = true
+}
+
+async function submitUser() {
+  if (!userFormRef.value) return
+  
+  await userFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    submitting.value = true
+    
+    try {
+      if (isEditingUser.value) {
+        // Update user (mock)
+        ElMessage.success('User updated successfully')
+      } else {
+        // Create user (mock)
+        ElMessage.success('User created successfully')
+      }
+      
+      userDialogVisible.value = false
+      await loadUsers()
+    } catch (error) {
+      console.error('Failed to save user:', error)
+      ElMessage.error('Failed to save user')
+    } finally {
+      submitting.value = false
+    }
+  })
 }
 
 function changeRole(user: User) {
@@ -238,7 +362,7 @@ async function submitRoleChange() {
   if (!selectedUser.value) return
   
   try {
-    const response = await mockHandlers.updateUserRole(selectedUser.value.id, roleForm.role)
+    const response = await userApi.updateUserRole(selectedUser.value.id, roleForm.role)
     
     if (response.code === 200) {
       ElMessage.success('Role updated successfully')

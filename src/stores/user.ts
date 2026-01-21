@@ -46,11 +46,15 @@ export const useUserStore = defineStore('user', () => {
     } catch (e) {
       console.error(e)
     } finally {
-      token.value = null
-      user.value = null
-      localStorage.removeItem('token')
-      loading.value = false
+      resetState()
     }
+  }
+
+  function resetState() {
+    token.value = null
+    user.value = null
+    localStorage.removeItem('token')
+    loading.value = false
   }
 
   async function fetchCurrentUser() {
@@ -115,6 +119,7 @@ export const useUserStore = defineStore('user', () => {
     loginWithSSO,
     logout,
     fetchCurrentUser,
-    setUser
+    setUser,
+    resetState
   }
 })

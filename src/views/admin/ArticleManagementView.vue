@@ -131,7 +131,13 @@
           </el-col>
           <el-col :span="6">
             <el-form-item :label="$t('common.category')" prop="category">
-              <el-select v-model="articleForm.category" style="width: 100%">
+              <el-select 
+                v-model="articleForm.category" 
+                style="width: 100%"
+                filterable
+                allow-create
+                :placeholder="$t('admin.selectOrEnterCategory')"
+              >
                 <el-option
                   v-for="cat in categories"
                   :key="cat"

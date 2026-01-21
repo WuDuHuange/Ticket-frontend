@@ -9,6 +9,7 @@ export interface User {
   avatar?: string
   department?: string
   phone?: string
+  status?: 'active' | 'inactive'
   createdAt: string
   lastLoginAt?: string
   isActive: boolean
@@ -24,15 +25,18 @@ export interface TicketCategory {
   name: string
   description?: string
   parentId?: string
+  parent?: string | null
 }
 
 export interface TicketAttachment {
   id: string
   filename: string
   url: string
-  size: number
+  fileSize: number
   mimeType: string
   uploadedAt: string
+  uploadedById?: string
+  uploadedByName?: string
 }
 
 export interface TicketComment {
@@ -183,10 +187,13 @@ export interface KnowledgeAnalytics {
 // SLA related types
 export interface SLAConfig {
   id: string
-  priority: TicketPriority
-  responseTimeMinutes: number
-  resolutionTimeMinutes: number
-  isActive: boolean
+  priority: TicketPriority | string
+  responseTime: number  // in hours
+  resolutionTime: number  // in hours
+  description?: string
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 // Audit Log types

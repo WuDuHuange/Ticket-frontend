@@ -48,7 +48,10 @@ export default {
     justNow: 'Just now',
     minutesAgo: '{n} minutes ago',
     hoursAgo: '{n} hours ago',
-    daysAgo: '{n} days ago'
+    daysAgo: '{n} days ago',
+    hours: 'hours',
+    active: 'Active',
+    inactive: 'Inactive'
   },
 
   // Navigation & Menu
@@ -69,6 +72,7 @@ export default {
     analytics: 'Analytics',
     userManagement: 'User Management',
     teamManagement: 'Team Management',
+    categoryManagement: 'Category Management',
     articleManagement: 'Article Management',
     systemSettings: 'System Settings',
     logout: 'Logout',
@@ -129,12 +133,10 @@ export default {
     noArticles: 'No popular articles',
     fromYesterday: 'from yesterday',
     slaAlert: 'SLA Alert',
-    emergencyResponseRisk: 'Emergency response timeout risk',
-    expiringSoon: 'Expiring soon',
-    allocationReminder: 'Allocation reminder',
-    minutesRemaining: '{n} minutes remaining until the SLA response deadline.',
-    hoursRemaining: '{n} hours remaining until the resolution deadline.',
-    awaitingAssignment: 'has been awaiting assignment for over {n} hour.',
+    noSLAAlerts: 'No SLA alerts at this time',
+    slaBreached: 'SLA Breached',
+    urgentTicketAlert: 'Requires immediate attention',
+    awaitingAssignment: 'Awaiting assignment',
     latestTickets: 'Latest Tickets',
     ticketNo: 'Ticket No.',
     customer: 'Customer',
@@ -144,11 +146,11 @@ export default {
     check: 'check',
     urge: 'urge',
     track: 'track',
-    orderTrend: 'Order Trend',
+    ticketTrend: 'Ticket Trend',
     monthly: 'monthly',
     quarterly: 'quarterly',
     categoryDistribution: 'Category Distribution',
-    thisWeek: 'this week'
+    allTickets: 'All Tickets'
   },
 
   // Tickets
@@ -357,6 +359,21 @@ export default {
     teamUpdated: 'Team updated successfully',
     teamDeleted: 'Team deleted successfully',
     confirmDeleteTeam: 'Are you sure you want to delete team',
+    // Members management
+    selectUser: 'Select user',
+    addMember: 'Add Member',
+    currentMembers: 'Current Members',
+    memberRole: 'Role',
+    memberAdded: 'Member added successfully',
+    memberRemoved: 'Member removed successfully',
+    // User management
+    enterUserName: 'Enter user name',
+    enterUserEmail: 'Enter user email',
+    enterPassword: 'Enter password',
+    enterDepartment: 'Enter department',
+    // SLA management
+    editSLA: 'Edit SLA',
+    enterSLAName: 'Enter SLA name',
     // Articles
     manageArticles: 'Manage Articles',
     addArticle: 'Add Article',
@@ -385,6 +402,7 @@ export default {
     enterArticleTitle: 'Enter article title',
     briefSummary: 'Brief summary of the article',
     addTags: 'Add tags',
+    selectOrEnterCategory: 'Select or enter category',
     saveAsDraft: 'Save as Draft',
     saveAndPublish: 'Save & Publish',
     articleTitleRequired: 'Please enter article title',

@@ -48,6 +48,12 @@
             <template #title>{{ $t('nav.faq') }}</template>
           </el-menu-item>
           
+          <!-- Article Management for Support Staff (outside Admin submenu) -->
+          <el-menu-item v-if="isStaff && !isManager" index="/admin/articles">
+            <el-icon><EditPen /></el-icon>
+            <template #title>{{ $t('nav.articleManagement') }}</template>
+          </el-menu-item>
+          
           <template v-if="isManager">
             <el-divider />
             <el-sub-menu index="/admin">
@@ -64,6 +70,11 @@
               <el-menu-item index="/admin/teams">
                 <el-icon><UserFilled /></el-icon>
                 {{ $t('nav.teamManagement') }}
+              </el-menu-item>
+              
+              <el-menu-item index="/admin/categories">
+                <el-icon><Folder /></el-icon>
+                {{ $t('nav.categoryManagement') || 'Category Management' }}
               </el-menu-item>
               
               <el-menu-item index="/admin/articles">
@@ -191,10 +202,10 @@
 
         <!-- Content -->
         <el-main class="main-content">
-          <router-view v-slot="{ Component }">
-            <transition name="fade" mode="out-in">
-              <component :is="Component" />
-            </transition>
+          <router-view v-slot="{ Component, route }">
+            <keep-alive :max="10">
+              <component :is="Component" :key="route.fullPath" />
+            </keep-alive>
           </router-view>
         </el-main>
       </el-container>
@@ -225,7 +236,9 @@ import {
   SwitchButton,
   Expand,
   Fold,
-  Monitor
+  Monitor,
+  Folder,
+  EditPen
 } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
@@ -247,31 +260,8 @@ interface Notification {
   link?: string
 }
 
-const notifications = ref<Notification[]>([
-  {
-    id: '1',
-    type: 'ticket',
-    message: t('notifications.ticketAssigned', { id: 'TKT-2026-0012' }),
-    time: new Date(Date.now() - 1000 * 60 * 5),
-    read: false,
-    link: '/tickets/TKT-2026-0012'
-  },
-  {
-    id: '2',
-    type: 'ticket',
-    message: t('notifications.ticketUpdated', { id: 'TKT-2026-0008' }),
-    time: new Date(Date.now() - 1000 * 60 * 30),
-    read: false,
-    link: '/tickets/TKT-2026-0008'
-  },
-  {
-    id: '3',
-    type: 'system',
-    message: t('notifications.systemMaintenance'),
-    time: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    read: false
-  }
-])
+// Empty initial state - will be populated from API when backend notification system is ready
+const notifications = ref<Notification[]>([])
 
 const notificationCount = computed(() => notifications.value.filter(n => !n.read).length)
 

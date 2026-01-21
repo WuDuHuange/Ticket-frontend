@@ -130,6 +130,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTicketStore, useKnowledgeStore, useUIStore } from '@/stores'
+import { ticketApi } from '@/api'
 import { ElMessage, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
 import { InfoFilled, Document, UploadFilled } from '@element-plus/icons-vue'
 import { debounce } from '@/utils/helpers'
@@ -212,8 +213,24 @@ async function handleSubmit() {
       })
       
       if (result.success && result.ticket) {
+        // Upload attachments if any
+        if (fileList.value.length > 0) {
+          for (const file of fileList.value) {
+            if (file.raw) {
+              const formData = new FormData()
+              formData.append('file', file.raw)
+              try {
+                await ticketApi.uploadAttachment(result.ticket.id, formData)
+              } catch (uploadError) {
+                console.error('Failed to upload attachment:', uploadError)
+              }
+            }
+          }
+        }
+        
         ElMessage.success('Ticket submitted successfully!')
-        router.push(`/tickets/${result.ticket.id}`)
+        // Navigate to my-tickets and trigger refresh
+        router.push('/my-tickets')
       } else {
         ElMessage.error(result.message || 'Failed to submit ticket')
       }

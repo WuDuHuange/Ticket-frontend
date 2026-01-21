@@ -48,7 +48,10 @@ export default {
     justNow: '刚刚',
     minutesAgo: '{n} 分钟前',
     hoursAgo: '{n} 小时前',
-    daysAgo: '{n} 天前'
+    daysAgo: '{n} 天前',
+    hours: '小时',
+    active: '启用',
+    inactive: '禁用'
   },
 
   // Navigation & Menu
@@ -69,6 +72,7 @@ export default {
     analytics: '数据分析',
     userManagement: '用户管理',
     teamManagement: '团队管理',
+    categoryManagement: '分类管理',
     articleManagement: '文章管理',
     systemSettings: '系统设置',
     logout: '退出登录',
@@ -129,12 +133,10 @@ export default {
     noArticles: '暂无热门文章',
     fromYesterday: '比昨日',
     slaAlert: 'SLA 预警',
-    emergencyResponseRisk: '紧急响应超时风险',
-    expiringSoon: '即将到期',
-    allocationReminder: '分配提醒',
-    minutesRemaining: '距离SLA响应截止时间还剩 {n} 分钟。',
-    hoursRemaining: '距离解决截止时间还剩 {n} 小时。',
-    awaitingAssignment: '已等待分配超过 {n} 小时。',
+    noSLAAlerts: '当前无 SLA 预警',
+    slaBreached: 'SLA 已超时',
+    urgentTicketAlert: '需要立即处理',
+    awaitingAssignment: '等待分配中',
     latestTickets: '最新工单',
     ticketNo: '工单号',
     customer: '客户',
@@ -144,11 +146,11 @@ export default {
     check: '查看',
     urge: '催办',
     track: '跟踪',
-    orderTrend: '工单趋势',
+    ticketTrend: '工单趋势',
     monthly: '月度',
     quarterly: '季度',
     categoryDistribution: '分类分布',
-    thisWeek: '本周'
+    allTickets: '全部工单'
   },
 
   // Tickets
@@ -357,6 +359,21 @@ export default {
     teamUpdated: '团队更新成功',
     teamDeleted: '团队删除成功',
     confirmDeleteTeam: '确定要删除团队',
+    // Members management
+    selectUser: '选择用户',
+    addMember: '添加成员',
+    currentMembers: '当前成员',
+    memberRole: '角色',
+    memberAdded: '成员添加成功',
+    memberRemoved: '成员移除成功',
+    // User management
+    enterUserName: '请输入用户名',
+    enterUserEmail: '请输入邮箱地址',
+    enterPassword: '请输入密码',
+    enterDepartment: '请输入部门',
+    // SLA management
+    editSLA: '编辑SLA',
+    enterSLAName: '请输入SLA名称',
     // Articles
     manageArticles: '管理文章',
     addArticle: '添加文章',
@@ -385,6 +402,7 @@ export default {
     enterArticleTitle: '请输入文章标题',
     briefSummary: '文章简要摘要',
     addTags: '添加标签',
+    selectOrEnterCategory: '选择或输入分类',
     saveAsDraft: '保存为草稿',
     saveAndPublish: '保存并发布',
     articleTitleRequired: '请输入文章标题',

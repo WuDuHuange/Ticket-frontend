@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTicketStore, useUIStore } from '@/stores'
@@ -157,6 +157,11 @@ onMounted(async () => {
   ])
   
   await ticketStore.fetchMyTickets(1, 10)
+})
+
+// Refresh data when component is activated (from keep-alive cache)
+onActivated(async () => {
+  await ticketStore.fetchMyTickets(1, pagination.value.pageSize || 10, filter.status || undefined)
 })
 
 function goToCreate() {

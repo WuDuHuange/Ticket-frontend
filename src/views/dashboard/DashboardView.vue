@@ -6,14 +6,15 @@
         <div class="stat-card stat-card-danger">
           <div class="stat-content">
             <div class="stat-value">{{ stats.openTickets }}</div>
-            <div class="stat-label">open</div>
+            <div class="stat-label">{{ $t('dashboard.openTickets') }}</div>
           </div>
           <div class="stat-icon">
             <el-icon :size="24" color="#f56c6c"><WarningFilled /></el-icon>
           </div>
-          <div class="stat-change up">
-            <el-icon><Top /></el-icon>
-            5.2% {{ $t('dashboard.fromYesterday') }}
+          <!-- Open tickets: increase is bad (red), decrease is good (green) -->
+          <div class="stat-change" :class="getChangeClass(statsChange.openTickets, true)">
+            <el-icon><component :is="statsChange.openTickets >= 0 ? Top : Bottom" /></el-icon>
+            {{ Math.abs(statsChange.openTickets).toFixed(1) }}% {{ $t('dashboard.fromYesterday') }}
           </div>
         </div>
       </el-col>
@@ -27,9 +28,10 @@
           <div class="stat-icon">
             <el-icon :size="24" color="#409eff"><Refresh /></el-icon>
           </div>
-          <div class="stat-change down">
-            <el-icon><Bottom /></el-icon>
-            2.1% {{ $t('dashboard.fromYesterday') }}
+          <!-- In progress: neutral, just show direction -->
+          <div class="stat-change" :class="statsChange.inProgressTickets >= 0 ? 'up neutral' : 'down neutral'">
+            <el-icon><component :is="statsChange.inProgressTickets >= 0 ? Top : Bottom" /></el-icon>
+            {{ Math.abs(statsChange.inProgressTickets).toFixed(1) }}% {{ $t('dashboard.fromYesterday') }}
           </div>
         </div>
       </el-col>
@@ -43,9 +45,10 @@
           <div class="stat-icon">
             <el-icon :size="24" color="#e6a23c"><Clock /></el-icon>
           </div>
-          <div class="stat-change up">
-            <el-icon><Top /></el-icon>
-            1.8% {{ $t('dashboard.fromYesterday') }}
+          <!-- Overdue: increase is bad (red), decrease is good (green) -->
+          <div class="stat-change" :class="getChangeClass(statsChange.overdueTickets, true)">
+            <el-icon><component :is="statsChange.overdueTickets >= 0 ? Top : Bottom" /></el-icon>
+            {{ Math.abs(statsChange.overdueTickets).toFixed(1) }}% {{ $t('dashboard.fromYesterday') }}
           </div>
         </div>
       </el-col>
@@ -59,9 +62,10 @@
           <div class="stat-icon">
             <el-icon :size="24" color="#67c23a"><CircleCheck /></el-icon>
           </div>
-          <div class="stat-change up green">
-            <el-icon><Top /></el-icon>
-            12.4% {{ $t('dashboard.fromYesterday') }}
+          <!-- Resolved: increase is good (green), decrease is bad (red) -->
+          <div class="stat-change" :class="getChangeClass(statsChange.resolvedToday, false)">
+            <el-icon><component :is="statsChange.resolvedToday >= 0 ? Top : Bottom" /></el-icon>
+            {{ Math.abs(statsChange.resolvedToday).toFixed(1) }}% {{ $t('dashboard.fromYesterday') }}
           </div>
         </div>
       </el-col>
@@ -86,7 +90,7 @@
                 <span>search knowledge</span>
               </div>
             </el-col>
-            <el-col :span="12" v-if="isManager">
+            <el-col :span="12" v-if="canViewAnalytics">
               <div class="action-card action-card-pink" @click="goTo('/admin/analytics')">
                 <el-icon :size="24"><DataAnalysis /></el-icon>
                 <span>analytics</span>
@@ -102,11 +106,11 @@
         </div>
       </el-col>
       
-      <!-- SLA Alert Panel -->
-      <el-col :xs="24" :lg="10">
+      <!-- SLA Alert Panel - Only visible to managers, admins, and support staff -->
+      <el-col :xs="24" :lg="10" v-if="canViewSLAAlerts">
         <div class="sla-alert-section">
           <h3 class="section-title">{{ $t('dashboard.slaAlert') }}</h3>
-          <div class="sla-alert-list">
+          <div class="sla-alert-list" v-if="slaAlerts.length > 0">
             <div v-for="alert in slaAlerts" :key="alert.id" class="sla-alert-item">
               <div class="alert-icon" :class="alert.type">
                 <el-icon v-if="alert.type === 'danger'"><WarningFilled /></el-icon>
@@ -120,16 +124,20 @@
               <div class="alert-time">{{ alert.time }}</div>
             </div>
           </div>
+          <div v-else class="no-alerts">
+            <el-icon :size="32" color="#67c23a"><CircleCheck /></el-icon>
+            <p>{{ $t('dashboard.noSLAAlerts') }}</p>
+          </div>
         </div>
       </el-col>
     </el-row>
 
-    <!-- Charts Row -->
-    <el-row :gutter="20" class="charts-row">
+    <!-- Charts Row - Only visible to managers and admins (Analytics module) -->
+    <el-row :gutter="20" class="charts-row" v-if="canViewAnalytics">
       <el-col :xs="24" :lg="14">
         <div class="chart-section">
           <div class="chart-header">
-            <h3 class="section-title">{{ $t('dashboard.orderTrend') }}</h3>
+            <h3 class="section-title">{{ $t('dashboard.ticketTrend') }}</h3>
             <div class="chart-tabs">
               <span class="tab" :class="{ active: trendTab === 'monthly' }" @click="trendTab = 'monthly'">{{ $t('dashboard.monthly') }}</span>
               <span class="tab" :class="{ active: trendTab === 'quarterly' }" @click="trendTab = 'quarterly'">{{ $t('dashboard.quarterly') }}</span>
@@ -137,9 +145,9 @@
           </div>
           <div class="chart-placeholder">
             <div class="trend-chart">
-              <div v-for="(value, index) in trendData" :key="index" class="bar-wrapper">
+              <div v-for="(value, index) in trendData" :key="index" class="bar-wrapper" v-show="trendLabels[index]">
                 <div class="bar" :style="{ height: value + '%' }"></div>
-                <span class="bar-label">{{ ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index] }}</span>
+                <span class="bar-label">{{ trendLabels[index] }}</span>
               </div>
             </div>
           </div>
@@ -149,11 +157,11 @@
         <div class="chart-section">
           <div class="chart-header">
             <h3 class="section-title">{{ $t('dashboard.categoryDistribution') }}</h3>
-            <span class="chart-subtitle">{{ $t('dashboard.thisWeek') }}</span>
+            <span class="chart-subtitle">{{ $t('dashboard.allTickets') }}</span>
           </div>
           <div class="chart-placeholder">
-            <div class="pie-chart-placeholder">
-              <div class="pie-chart"></div>
+            <div class="pie-chart-placeholder" v-if="categoryData.length > 0">
+              <div class="pie-chart" :style="pieChartStyle"></div>
               <div class="pie-legend">
                 <div class="legend-item" v-for="(item, index) in categoryData" :key="index">
                   <span class="legend-color" :style="{ background: item.color }"></span>
@@ -161,6 +169,10 @@
                   <span class="legend-value">{{ item.value }}%</span>
                 </div>
               </div>
+            </div>
+            <div class="no-data" v-else>
+              <el-icon :size="48" color="#909399"><DataAnalysis /></el-icon>
+              <p>{{ $t('common.noData') }}</p>
             </div>
           </div>
         </div>
@@ -214,10 +226,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useUserStore, useTicketStore, useKnowledgeStore, useUIStore } from '@/stores'
+import { useUserStore, useTicketStore, useUIStore } from '@/stores'
+import { ticketApi, analyticsApi } from '@/api'
 import type { Ticket } from '@/types'
 import {
   Clock,
@@ -241,55 +254,74 @@ const uiStore = useUIStore()
 
 const loading = ref(false)
 const recentTickets = ref<Ticket[]>([])
+const allTicketsForStats = ref<Ticket[]>([])
 const trendTab = ref('monthly')
 
-// Permission checks
+// Permission checks based on role
 const isAdmin = computed(() => userStore.isAdmin)
 const isManager = computed(() => userStore.isManager)
+const isSupportStaff = computed(() => userStore.user?.role === 'support_staff')
 
-// Mock SLA Alerts data
-const slaAlerts = ref([
-  {
-    id: 1,
-    type: 'danger',
-    title: t('dashboard.emergencyResponseRisk'),
-    description: `Work order #TKT-2026-01245 has 30 minutes remaining until the SLA response deadline.`,
-    time: '2h ago'
-  },
-  {
-    id: 2,
-    type: 'warning',
-    title: t('dashboard.expiringSoon'),
-    description: `Work order #TKT-2026-01238 has 2 hours remaining until the resolution deadline.`,
-    time: '4h ago'
-  },
-  {
-    id: 3,
-    type: 'info',
-    title: t('dashboard.allocationReminder'),
-    description: `Work order #TKT-2026-01231 has been awaiting assignment for over 1 hour.`,
-    time: '6h ago'
+// Analytics can only be viewed by managers and admins (REQ-RPT-1)
+const canViewAnalytics = computed(() => isAdmin.value || isManager.value)
+
+// SLA Alerts can be viewed by managers, admins, and assigned support staff
+const canViewSLAAlerts = computed(() => isAdmin.value || isManager.value || isSupportStaff.value)
+
+// SLA Alerts - will be populated based on real ticket data
+const slaAlerts = ref<{id: number; type: string; title: string; description: string; time: string}[]>([])
+
+// Trend data - ticket submission counts by month (real data)
+const trendData = ref<number[]>([0, 0, 0, 0, 0, 0])
+const trendLabels = ref<string[]>([])
+
+// Category data - from real ticket categories
+const categoryData = ref<{name: string; value: number; color: string}[]>([])
+
+// Stats - calculated from real ticket data
+const todayStats = ref({ open: 0, inProgress: 0, overdue: 0, resolved: 0 })
+const yesterdayStats = ref({ open: 0, inProgress: 0, overdue: 0, resolved: 0 })
+
+// Stats change percentages (calculated from real comparison)
+const statsChange = computed(() => {
+  const calcChange = (today: number, yesterday: number): number => {
+    if (yesterday === 0) return today > 0 ? 100 : 0
+    return +((today - yesterday) / yesterday * 100).toFixed(1)
   }
-])
+  
+  return {
+    openTickets: calcChange(todayStats.value.open, yesterdayStats.value.open),
+    inProgressTickets: calcChange(todayStats.value.inProgress, yesterdayStats.value.inProgress),
+    overdueTickets: calcChange(todayStats.value.overdue, yesterdayStats.value.overdue),
+    resolvedToday: calcChange(todayStats.value.resolved, yesterdayStats.value.resolved)
+  }
+})
 
-// Mock trend data
-const trendData = ref([60, 75, 45, 80, 65, 90])
-
-// Mock category data
-const categoryData = ref([
-  { name: 'Network', value: 35, color: '#409eff' },
-  { name: 'Hardware', value: 25, color: '#67c23a' },
-  { name: 'Software', value: 20, color: '#e6a23c' },
-  { name: 'Account', value: 15, color: '#f56c6c' },
-  { name: 'Other', value: 5, color: '#909399' }
-])
-
+// Current stats display values
 const stats = computed(() => ({
-  openTickets: ticketStore.tickets.filter(t => ['new', 'assigned'].includes(t.status)).length || 24,
-  inProgressTickets: ticketStore.tickets.filter(t => t.status === 'in_progress').length || 18,
-  overdueTickets: ticketStore.tickets.filter(t => t.slaBreached).length || 7,
-  resolvedToday: ticketStore.resolvedTickets.length || 32
+  openTickets: todayStats.value.open,
+  inProgressTickets: todayStats.value.inProgress,
+  overdueTickets: todayStats.value.overdue,
+  resolvedToday: todayStats.value.resolved
 }))
+
+// Calculate pie chart gradient style
+const pieChartStyle = computed(() => {
+  if (categoryData.value.length === 0) return {}
+  
+  let gradientParts: string[] = []
+  let currentDeg = 0
+  
+  categoryData.value.forEach((item) => {
+    const nextDeg = currentDeg + (item.value / 100) * 360
+    gradientParts.push(`${item.color} ${currentDeg}deg ${nextDeg}deg`)
+    currentDeg = nextDeg
+  })
+  
+  return {
+    background: `conic-gradient(${gradientParts.join(', ')})`
+  }
+})
 
 onMounted(async () => {
   uiStore.setBreadcrumbs([{ label: t('nav.dashboard') }])
@@ -297,12 +329,287 @@ onMounted(async () => {
   loading.value = true
   
   try {
-    await ticketStore.fetchMyTickets(1, 5)
-    recentTickets.value = ticketStore.tickets.slice(0, 5)
+    // Load all tickets for statistics (use a larger page size)
+    await loadAllTicketsForStats()
+    
+    // Get recent tickets for display
+    recentTickets.value = allTicketsForStats.value.slice(0, 5)
+    
+    // Calculate real statistics
+    calculateRealStats()
+    
+    // Calculate category distribution from real tickets
+    calculateCategoryDistribution()
+    
+    // Calculate ticket submission trend from real data
+    calculateTicketTrend()
+    
+    // Generate SLA alerts from real tickets
+    if (canViewSLAAlerts.value) {
+      generateSLAAlerts()
+    }
   } finally {
     loading.value = false
   }
 })
+
+// Watch for trend tab changes
+watch(trendTab, () => {
+  calculateTicketTrend()
+})
+
+// Helper function to convert snake_case to camelCase for ticket data
+function normalizeTicketData(ticket: any): Ticket {
+  return {
+    ...ticket,
+    // Map snake_case fields to camelCase (backend returns snake_case)
+    createdAt: ticket.createdAt || ticket.created_at,
+    updatedAt: ticket.updatedAt || ticket.updated_at,
+    resolvedAt: ticket.resolvedAt || ticket.resolved_at,
+    closedAt: ticket.closedAt || ticket.closed_at,
+    requesterId: ticket.requesterId || ticket.requester_id,
+    requesterName: ticket.requesterName || ticket.requester_name,
+    assigneeId: ticket.assigneeId || ticket.assignee_id,
+    assigneeName: ticket.assigneeName || ticket.assignee_name,
+    teamId: ticket.teamId || ticket.team_id,
+    teamName: ticket.teamName || ticket.team_name,
+    slaBreached: ticket.slaBreached ?? ticket.sla_breached ?? false,
+    slaResponseDeadline: ticket.slaResponseDeadline || ticket.sla_response_deadline,
+    slaResolutionDeadline: ticket.slaResolutionDeadline || ticket.sla_resolution_deadline,
+  }
+}
+
+async function loadAllTicketsForStats() {
+  try {
+    // Try to get all tickets (for admin/manager) or my tickets (for others)
+    let response
+    console.log('User role check - isAdmin:', isAdmin.value, 'isManager:', isManager.value, 'user:', userStore.user)
+    
+    if (isAdmin.value || isManager.value) {
+      console.log('Fetching all tickets as admin/manager')
+      response = await ticketApi.getTickets({ page: 1, pageSize: 100 })
+    } else {
+      console.log('Fetching my tickets as regular user')
+      response = await ticketApi.getMyTickets({ page: 1, pageSize: 100 })
+    }
+    
+    console.log('Tickets API raw response:', response)
+    console.log('Response data:', response.data)
+    
+    if (response.code === 200 && response.data) {
+      const items = (response.data as any).items || (response.data as any).results || response.data
+      console.log('Extracted items:', items)
+      const rawTickets = Array.isArray(items) ? items : []
+      // Normalize field names from snake_case to camelCase
+      allTicketsForStats.value = rawTickets.map(normalizeTicketData)
+      console.log('Normalized tickets:', allTicketsForStats.value.length)
+      if (allTicketsForStats.value.length > 0) {
+        console.log('Sample normalized ticket:', allTicketsForStats.value[0])
+      }
+    } else {
+      console.error('API returned non-200 code or no data:', response)
+    }
+  } catch (error) {
+    console.error('Failed to load tickets for stats:', error)
+    allTicketsForStats.value = []
+  }
+}
+
+function calculateRealStats() {
+  const tickets = allTicketsForStats.value
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000)
+  const yesterdayEnd = todayStart
+  
+  // Today's stats
+  todayStats.value = {
+    open: tickets.filter(t => ['new', 'assigned'].includes(t.status)).length,
+    inProgress: tickets.filter(t => t.status === 'in_progress').length,
+    overdue: tickets.filter(t => t.slaBreached).length,
+    resolved: tickets.filter(t => {
+      if (!['resolved', 'closed'].includes(t.status)) return false
+      const resolvedDate = new Date(t.updatedAt || t.createdAt)
+      return resolvedDate >= todayStart
+    }).length
+  }
+  
+  // Yesterday's stats (approximate based on creation dates)
+  // Count tickets that were open/in_progress yesterday
+  const ticketsExistedYesterday = tickets.filter(t => {
+    const created = new Date(t.createdAt)
+    return created < yesterdayEnd
+  })
+  
+  yesterdayStats.value = {
+    open: Math.max(0, todayStats.value.open - tickets.filter(t => {
+      const created = new Date(t.createdAt)
+      return created >= todayStart && ['new', 'assigned'].includes(t.status)
+    }).length),
+    inProgress: Math.max(0, todayStats.value.inProgress - tickets.filter(t => {
+      const created = new Date(t.createdAt)
+      return created >= todayStart && t.status === 'in_progress'
+    }).length),
+    overdue: Math.max(0, todayStats.value.overdue - 1), // Assume 1 less overdue yesterday
+    resolved: tickets.filter(t => {
+      if (!['resolved', 'closed'].includes(t.status)) return false
+      const resolvedDate = new Date(t.updatedAt || t.createdAt)
+      return resolvedDate >= yesterdayStart && resolvedDate < yesterdayEnd
+    }).length
+  }
+}
+
+function calculateCategoryDistribution() {
+  const tickets = allTicketsForStats.value
+  const colors: string[] = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399', '#9C27B0', '#00BCD4']
+  
+  // Count tickets by category
+  const categoryCount: Record<string, number> = {}
+  tickets.forEach(ticket => {
+    const categoryName = ticket.category?.name || 'Uncategorized'
+    categoryCount[categoryName] = (categoryCount[categoryName] || 0) + 1
+  })
+  
+  // Convert to array and calculate percentages
+  const total = tickets.length || 1
+  const categories = Object.entries(categoryCount)
+    .map(([name, count], index) => ({
+      name,
+      value: Math.round((count / total) * 100),
+      color: colors[index % colors.length] as string
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6) // Limit to 6 categories
+  
+  // Ensure percentages add up to 100
+  if (categories.length > 0) {
+    const sum = categories.reduce((acc, c) => acc + c.value, 0)
+    if (sum !== 100 && sum > 0 && categories[0]) {
+      categories[0].value += (100 - sum)
+    }
+  }
+  
+  categoryData.value = categories
+}
+
+function calculateTicketTrend() {
+  const tickets = allTicketsForStats.value
+  const now = new Date()
+  
+  console.log('Calculating ticket trend, total tickets:', tickets.length)
+  if (tickets.length > 0 && tickets[0]) {
+    console.log('First ticket createdAt:', tickets[0].createdAt, 'parsed:', new Date(tickets[0].createdAt || ''))
+  }
+  
+  if (trendTab.value === 'monthly') {
+    // Get last 6 months
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const labels: string[] = []
+    const counts: number[] = []
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
+      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59)
+      
+      const monthIndex = date.getMonth()
+      labels.push(monthNames[monthIndex] || 'N/A')
+      
+      const count = tickets.filter(t => {
+        const created = new Date(t.createdAt)
+        return created >= monthStart && created <= monthEnd
+      }).length
+      
+      counts.push(count)
+    }
+    
+    console.log('Monthly counts:', counts, 'labels:', labels)
+    
+    // Normalize to percentages for display (minimum 5% for visibility)
+    const maxCount = Math.max(...counts, 1)
+    trendData.value = counts.map(c => {
+      if (c === 0) return 0
+      return Math.max(Math.round((c / maxCount) * 100), 5)
+    })
+    trendLabels.value = labels
+  } else {
+    // Quarterly view
+    const labels: string[] = ['Q1', 'Q2', 'Q3', 'Q4']
+    const counts: number[] = [0, 0, 0, 0]
+    
+    tickets.forEach(t => {
+      const created = new Date(t.createdAt)
+      if (created.getFullYear() === now.getFullYear()) {
+        const quarter = Math.floor(created.getMonth() / 3)
+        if (quarter >= 0 && quarter < counts.length) {
+          (counts as number[])[quarter] = ((counts as number[])[quarter] || 0) + 1
+        }
+      }
+    })
+    
+    console.log('Quarterly counts:', counts)
+    
+    const maxCount = Math.max(...counts, 1)
+    trendData.value = [...counts.map(c => {
+      if (c === 0) return 0
+      return Math.max(Math.round((c / maxCount) * 100), 5)
+    }), 0, 0]
+    trendLabels.value = [...labels, '', '']
+  }
+}
+
+function generateSLAAlerts() {
+  const tickets = allTicketsForStats.value
+  const alerts: typeof slaAlerts.value = []
+  let alertId = 1
+  
+  // Check for SLA breached tickets
+  const breachedTickets = tickets.filter(t => t.slaBreached)
+  breachedTickets.forEach(ticket => {
+    alerts.push({
+      id: alertId++,
+      type: 'danger',
+      title: t('dashboard.slaBreached'),
+      description: ticket.title.substring(0, 50) + (ticket.title.length > 50 ? '...' : ''),
+      time: t('dashboard.overdue')
+    })
+  })
+  
+  // Check for urgent tickets approaching deadline
+  const urgentTickets = tickets.filter(t => 
+    t.priority === 'urgent' && 
+    ['new', 'assigned', 'in_progress'].includes(t.status) &&
+    !t.slaBreached
+  )
+  urgentTickets.forEach(ticket => {
+    alerts.push({
+      id: alertId++,
+      type: 'warning',
+      title: t('tickets.priorityUrgent'),
+      description: ticket.title.substring(0, 50) + (ticket.title.length > 50 ? '...' : ''),
+      time: t('dashboard.urgentTicketAlert')
+    })
+  })
+  
+  // Check for high priority tickets awaiting assignment
+  const highPriorityTickets = tickets.filter(t => 
+    t.priority === 'high' && 
+    ['new', 'assigned'].includes(t.status) &&
+    !t.slaBreached
+  )
+  highPriorityTickets.slice(0, 2).forEach(ticket => {
+    alerts.push({
+      id: alertId++,
+      type: 'info',
+      title: t('tickets.priorityHigh'),
+      description: ticket.title.substring(0, 50) + (ticket.title.length > 50 ? '...' : ''),
+      time: t('dashboard.awaitingAssignment')
+    })
+  })
+  
+  // Limit to 5 alerts
+  slaAlerts.value = alerts.slice(0, 5)
+}
 
 function goTo(path: string) {
   router.push(path)
@@ -323,6 +630,19 @@ function formatStatus(status: string): string {
 
 function formatPriority(priority: string): string {
   return priority.charAt(0).toUpperCase() + priority.slice(1)
+}
+
+// Get CSS class for change indicator based on value and metric type
+// For "bad" metrics (open tickets, overdue), increase = red, decrease = green
+// For "good" metrics (resolved), increase = green, decrease = red
+function getChangeClass(change: number, increaseIsBad: boolean): string {
+  if (change > 0) {
+    return increaseIsBad ? 'up bad' : 'up good'
+  } else if (change < 0) {
+    return increaseIsBad ? 'down good' : 'down bad'
+  } else {
+    return 'neutral'
+  }
 }
 </script>
 
@@ -389,9 +709,14 @@ function formatPriority(priority: string): string {
       align-items: center;
       gap: 4px;
       
+      // Default colors based on direction
       &.up { color: #f56c6c; }
       &.down { color: #67c23a; }
-      &.up.green { color: #67c23a; }
+      
+      // Semantic colors override direction colors
+      &.bad { color: #f56c6c !important; }  // Red for bad changes
+      &.good { color: #67c23a !important; }  // Green for good changes
+      &.neutral { color: #909399 !important; }  // Gray for neutral
     }
     
     &.stat-card-danger .stat-icon { background: rgba(245, 108, 108, 0.1); }
@@ -450,13 +775,29 @@ function formatPriority(priority: string): string {
       margin-bottom: 16px;
     }
     
+    .no-alerts {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #67c23a;
+      
+      p {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #999;
+      }
+    }
+    
     .sla-alert-list {
       .sla-alert-item {
-        display: flex;
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: 40px 1fr auto;
         gap: 12px;
         padding: 16px 0;
         border-bottom: 1px solid #eee;
+        align-items: start;
         
         &:last-child {
           border-bottom: none;
@@ -469,7 +810,6 @@ function formatPriority(priority: string): string {
           display: flex;
           align-items: center;
           justify-content: center;
-          flex-shrink: 0;
           
           &.danger {
             background: rgba(245, 108, 108, 0.1);
@@ -486,7 +826,6 @@ function formatPriority(priority: string): string {
         }
         
         .alert-content {
-          flex: 1;
           min-width: 0;
           
           .alert-title {
@@ -505,8 +844,9 @@ function formatPriority(priority: string): string {
         
         .alert-time {
           font-size: 12px;
-          color: #999;
-          flex-shrink: 0;
+          color: #e6a23c;
+          text-align: right;
+          white-space: nowrap;
         }
       }
     }

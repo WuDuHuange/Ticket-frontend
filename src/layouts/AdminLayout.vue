@@ -37,6 +37,11 @@
             <template #title>Team Management</template>
           </el-menu-item>
           
+          <el-menu-item index="/admin/categories">
+            <el-icon><Folder /></el-icon>
+            <template #title>Category Management</template>
+          </el-menu-item>
+          
           <el-menu-item index="/admin/articles">
             <el-icon><Document /></el-icon>
             <template #title>Article Management</template>
@@ -84,10 +89,10 @@
 
         <!-- Content -->
         <el-main class="main-content">
-          <router-view v-slot="{ Component }">
-            <transition name="fade" mode="out-in">
-              <component :is="Component" />
-            </transition>
+          <router-view v-slot="{ Component, route }">
+            <keep-alive :max="10">
+              <component :is="Component" :key="route.fullPath" />
+            </keep-alive>
           </router-view>
         </el-main>
       </el-container>
@@ -106,6 +111,7 @@ import {
   User,
   UserFilled,
   Document,
+  Folder,
   Tools,
   ArrowDown,
   SwitchButton

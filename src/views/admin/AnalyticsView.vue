@@ -190,7 +190,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores'
-import mockHandlers from '@/mock'
+import { analyticsApi, auditApi } from '@/api'
 import type { TicketAnalytics, AgentPerformance, AuditLog } from '@/types'
 import { formatDate } from '@/utils/helpers'
 import {
@@ -267,18 +267,18 @@ onMounted(async () => {
   
   try {
     const [analyticsRes, performanceRes, logsRes] = await Promise.all([
-      mockHandlers.getTicketAnalytics(),
-      mockHandlers.getAgentPerformance(),
-      mockHandlers.getAuditLogs({ page: 1, pageSize: 10 })
+      analyticsApi.getTicketAnalytics({}).catch(() => ({ code: 500, data: null })),
+      analyticsApi.getAgentPerformance({}).catch(() => ({ code: 500, data: [] })),
+      auditApi.getAuditLogs({ page: 1, pageSize: 10 }).catch(() => ({ code: 500, data: { items: [] } }))
     ])
     
-    if (analyticsRes.code === 200) {
+    if (analyticsRes.code === 200 && analyticsRes.data) {
       analytics.value = analyticsRes.data
     }
-    if (performanceRes.code === 200) {
+    if (performanceRes.code === 200 && performanceRes.data) {
       agentPerformance.value = performanceRes.data
     }
-    if (logsRes.code === 200) {
+    if (logsRes.code === 200 && logsRes.data) {
       auditLogs.value = logsRes.data.items
     }
   } finally {

@@ -18,6 +18,7 @@ const ProfileView = () => import('@/views/profile/ProfileView.vue')
 const UserManagementView = () => import('@/views/admin/UserManagementView.vue')
 const TeamManagementView = () => import('@/views/admin/TeamManagementView.vue')
 const ArticleManagementView = () => import('@/views/admin/ArticleManagementView.vue')
+const CategoryManagementView = () => import('@/views/admin/CategoryManagementView.vue')
 const AnalyticsView = () => import('@/views/admin/AnalyticsView.vue')
 const SystemSettingsView = () => import('@/views/admin/SystemSettingsView.vue')
 const NotFoundView = () => import('@/views/error/NotFoundView.vue')
@@ -110,6 +111,12 @@ const routes: RouteRecordRaw[] = [
         name: 'TeamManagement',
         component: TeamManagementView,
         meta: { title: 'Team Management', roles: ['manager', 'admin'] }
+      },
+      {
+        path: 'categories',
+        name: 'CategoryManagement',
+        component: CategoryManagementView,
+        meta: { title: 'Category Management', roles: ['manager', 'admin'] }
       },
       {
         path: 'articles',

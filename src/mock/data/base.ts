@@ -137,10 +137,10 @@ export const mockCategories: TicketCategory[] = [
 
 // Mock SLA Configurations
 export const mockSLAConfigs: SLAConfig[] = [
-  { id: 'sla-001', priority: 'urgent', responseTimeMinutes: 30, resolutionTimeMinutes: 240, isActive: true },
-  { id: 'sla-002', priority: 'high', responseTimeMinutes: 60, resolutionTimeMinutes: 480, isActive: true },
-  { id: 'sla-003', priority: 'medium', responseTimeMinutes: 240, resolutionTimeMinutes: 1440, isActive: true },
-  { id: 'sla-004', priority: 'low', responseTimeMinutes: 480, resolutionTimeMinutes: 2880, isActive: true }
+  { id: 'sla-001', priority: 'urgent', responseTime: 1, resolutionTime: 4, description: 'Urgent priority - Critical issues requiring immediate attention', isActive: true },
+  { id: 'sla-002', priority: 'high', responseTime: 4, resolutionTime: 8, description: 'High priority - Important issues that need quick resolution', isActive: true },
+  { id: 'sla-003', priority: 'medium', responseTime: 8, resolutionTime: 24, description: 'Medium priority - Standard issues with normal handling time', isActive: true },
+  { id: 'sla-004', priority: 'low', responseTime: 24, resolutionTime: 72, description: 'Low priority - Non-urgent issues that can be handled when time permits', isActive: true }
 ]
 
 // Knowledge Base Categories
