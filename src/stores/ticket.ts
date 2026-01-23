@@ -155,6 +155,50 @@ export const useTicketStore = defineStore('ticket', () => {
     }
   }
 
+  async function assignTicket(id: string, assigneeId: string) {
+    loading.value = true
+    try {
+      const response = await ticketApi.assignTicket(id, assigneeId)
+
+      if (response.code === 200 && response.data) {
+        currentTicket.value = response.data
+        const index = tickets.value.findIndex(t => t.id === id)
+        if (index !== -1) {
+          tickets.value[index] = response.data
+        }
+        return { success: true }
+      }
+      return { success: false, message: response.message }
+    } catch (error) {
+      console.error('Assign ticket error:', error)
+      return { success: false, message: 'Failed to assign ticket' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function assignTicketToTeam(id: string, teamId: string) {
+    loading.value = true
+    try {
+      const response = await ticketApi.assignTicketToTeam(id, teamId)
+
+      if (response.code === 200 && response.data) {
+        currentTicket.value = response.data
+        const index = tickets.value.findIndex(t => t.id === id)
+        if (index !== -1) {
+          tickets.value[index] = response.data
+        }
+        return { success: true }
+      }
+      return { success: false, message: response.message }
+    } catch (error) {
+      console.error('Assign ticket to team error:', error)
+      return { success: false, message: 'Failed to assign ticket to team' }
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function addComment(ticketId: string, content: string, isInternal = false) {
     loading.value = true
     try {
@@ -186,6 +230,25 @@ export const useTicketStore = defineStore('ticket', () => {
     }
   }
 
+  async function submitSatisfaction(ticketId: string, rating: number, comment?: string) {
+    loading.value = true
+    try {
+      const response = await ticketApi.submitFeedback(ticketId, { rating, comment })
+      
+      if (response.code === 200) {
+        // Refresh current ticket to get updated satisfaction data
+        await fetchTicketById(ticketId)
+        return { success: true }
+      }
+      return { success: false, message: response.message }
+    } catch (error) {
+      console.error('Submit satisfaction error:', error)
+      return { success: false, message: 'Failed to submit satisfaction feedback' }
+    } finally {
+      loading.value = false
+    }
+  }
+
   function setFilter(newFilter: Record<string, unknown>) {
     filter.value = newFilter
   }
@@ -214,8 +277,11 @@ export const useTicketStore = defineStore('ticket', () => {
     fetchTicketById,
     createTicket,
     updateTicketStatus,
+    assignTicket,
+    assignTicketToTeam,
     addComment,
     fetchCategories,
+    submitSatisfaction,
     setFilter,
     clearFilter
   }

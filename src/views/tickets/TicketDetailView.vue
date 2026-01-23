@@ -28,6 +28,9 @@
                 <el-dropdown-item command="assigned" :disabled="ticket.status === 'assigned'">
                   {{ $t('tickets.assignToMe') }}
                 </el-dropdown-item>
+                <el-dropdown-item command="assign_other" v-if="isAdmin || isManager">
+                  {{ $t('tickets.assignTicket') }}
+                </el-dropdown-item>
                 <el-dropdown-item command="in_progress" :disabled="ticket.status === 'in_progress'">
                   {{ $t('tickets.statusInProgress') }}
                 </el-dropdown-item>
@@ -45,6 +48,75 @@
           </el-dropdown>
         </div>
       </div>
+
+      <!-- Assign Dialog for Admins/Managers -->
+      <el-dialog
+        :title="t('tickets.assignTicket')"
+        v-model="assignDialogVisible"
+        width="480px"
+        :before-close="() => { assignDialogVisible = false }"
+      >
+        <el-form label-position="top">
+          <el-form-item :label="t('tickets.selectAssignee')">
+            <el-select v-model="selectedAssignee" placeholder="Select user" filterable clearable>
+              <el-option v-for="u in assignees" :key="u.id" :label="u.name || u.email" :value="u.id" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item :label="t('tickets.selectTeam')">
+            <el-select v-model="selectedTeam" placeholder="Select team" filterable clearable>
+              <el-option v-for="tm in teams" :key="tm.id" :label="tm.name" :value="tm.id" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <div style="text-align: right">
+            <el-button @click="assignDialogVisible = false">{{ t('common.cancel') }}</el-button>
+            <el-button type="primary" :loading="assigning" @click="assignToSelected">{{ t('common.confirm') }}</el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- Satisfaction Survey Dialog -->
+      <el-dialog
+        :title="t('tickets.satisfactionSurvey')"
+        v-model="satisfactionDialogVisible"
+        width="500px"
+        :close-on-click-modal="false"
+      >
+        <div class="satisfaction-survey">
+          <p class="survey-description">{{ t('tickets.satisfactionSurveyDesc') }}</p>
+          
+          <div class="rating-section">
+            <label class="rating-label">{{ t('tickets.satisfactionRating') }}</label>
+            <el-rate
+              v-model="satisfactionRating"
+              :texts="ratingTexts"
+              show-text
+              size="large"
+            />
+          </div>
+          
+          <div class="feedback-section">
+            <el-input
+              v-model="satisfactionComment"
+              type="textarea"
+              :rows="4"
+              :placeholder="t('tickets.feedbackPlaceholder')"
+            />
+          </div>
+        </div>
+
+        <template #footer>
+          <div style="text-align: right">
+            <el-button @click="satisfactionDialogVisible = false">{{ t('common.cancel') }}</el-button>
+            <el-button type="primary" :loading="submittingSatisfaction" @click="submitSatisfaction">
+              {{ t('tickets.submitRating') }}
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
 
       <el-row :gutter="24">
         <!-- Main Content -->
@@ -226,6 +298,38 @@
             
             <el-empty v-if="!ticket.statusHistory?.length" :description="$t('tickets.noHistory')" :image-size="60" />
           </el-card>
+
+          <!-- Satisfaction Rating Card (shown when ticket is closed) -->
+          <el-card v-if="ticket.status === 'closed'" class="satisfaction-card">
+            <template #header>
+              <span>{{ $t('tickets.satisfactionSurvey') }}</span>
+            </template>
+            
+            <!-- Already rated -->
+            <div v-if="ticket.satisfactionRating" class="satisfaction-display">
+              <div class="rating-display">
+                <span class="label">{{ $t('tickets.yourRating') }}:</span>
+                <el-rate :model-value="ticket.satisfactionRating" disabled />
+              </div>
+              <div v-if="ticket.satisfactionComment" class="feedback-display">
+                <span class="label">{{ $t('tickets.yourFeedback') }}:</span>
+                <p class="feedback-text">{{ ticket.satisfactionComment }}</p>
+              </div>
+            </div>
+            
+            <!-- Not rated yet - show button for ticket owner -->
+            <div v-else-if="isTicketOwner" class="satisfaction-prompt">
+              <p>{{ $t('tickets.satisfactionSurveyDesc') }}</p>
+              <el-button type="primary" @click="openSatisfactionDialog">
+                {{ $t('tickets.submitRating') }}
+              </el-button>
+            </div>
+            
+            <!-- Not rated - shown for staff -->
+            <div v-else class="satisfaction-pending">
+              <el-empty :description="$t('tickets.noHistory')" :image-size="40" />
+            </div>
+          </el-card>
         </el-col>
       </el-row>
     </template>
@@ -242,6 +346,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTicketStore, useUserStore, useUIStore } from '@/stores'
+import { userApi, teamApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowLeft,
@@ -270,10 +375,37 @@ const uiStore = useUIStore()
 const loading = computed(() => ticketStore.loading)
 const ticket = computed(() => ticketStore.currentTicket)
 const isStaff = computed(() => userStore.isStaff)
+const isAdmin = computed(() => userStore.isAdmin)
+const isManager = computed(() => userStore.isManager)
+const isTicketOwner = computed(() => {
+  if (!ticket.value || !userStore.user) return false
+  return String(ticket.value.requesterId) === String(userStore.user.id)
+})
+
+// Assign dialog state
+const assignDialogVisible = ref(false)
+const assignees = ref<any[]>([])
+const teams = ref<any[]>([])
+const selectedAssignee = ref<string | null>(null)
+const selectedTeam = ref<string | null>(null)
+const assigning = ref(false)
 
 const newComment = ref('')
 const isInternalComment = ref(false)
 const submitting = ref(false)
+
+// Satisfaction survey state
+const satisfactionDialogVisible = ref(false)
+const satisfactionRating = ref(0)
+const satisfactionComment = ref('')
+const submittingSatisfaction = ref(false)
+const ratingTexts = computed(() => [
+  t('common.veryPoor') || 'Very Poor',
+  t('common.poor') || 'Poor', 
+  t('common.average') || 'Average',
+  t('common.good') || 'Good',
+  t('common.excellent') || 'Excellent'
+])
 
 function formatStatus(status: string): string {
   const statusMap: Record<string, string> = {
@@ -324,7 +456,19 @@ function getInitials(name: string): string {
 
 async function handleStatusChange(status: string) {
   if (!ticket.value) return
-  
+
+  // Open assign dialog for admins/managers
+  if (status === 'assign_other') {
+    await openAssignDialog()
+    return
+  }
+
+  // Assign to self: call assign API instead of status endpoint
+  if (status === 'assigned') {
+    await assignToSelf()
+    return
+  }
+
   try {
     const { value: comment } = await ElMessageBox.prompt(
       t('tickets.statusChangeComment'),
@@ -335,9 +479,9 @@ async function handleStatusChange(status: string) {
         inputType: 'textarea'
       }
     )
-    
+
     const result = await ticketStore.updateTicketStatus(ticket.value.id, status, comment)
-    
+
     if (result.success) {
       ElMessage.success(t('tickets.statusUpdated'))
     } else {
@@ -345,6 +489,92 @@ async function handleStatusChange(status: string) {
     }
   } catch {
     // User cancelled
+  }
+}
+
+async function openAssignDialog() {
+  assignDialogVisible.value = true
+  await loadAssignees()
+  await loadTeams()
+}
+
+async function loadAssignees() {
+  try {
+    const resp = await userApi.getUsers({ page: 1, pageSize: 200, role: 'support_staff' })
+    if (resp.code === 200 && resp.data) {
+      assignees.value = (resp.data as any).items || []
+    }
+  } catch (e) {
+    console.error('Load assignees error', e)
+  }
+}
+
+async function loadTeams() {
+  try {
+    const resp = await teamApi.getTeams()
+    if (resp.code === 200 && resp.data) {
+      teams.value = resp.data as any[]
+    }
+  } catch (e) {
+    console.error('Load teams error', e)
+  }
+}
+
+async function assignToSelf() {
+  if (!ticket.value) return
+  const currentUserId = userStore.user?.id
+  if (!currentUserId) {
+    ElMessage.error(t('errors.notAuthenticated'))
+    return
+  }
+
+  assigning.value = true
+  try {
+    const result = await ticketStore.assignTicket(ticket.value.id, String(currentUserId))
+    if (result.success) {
+      ElMessage.success(t('tickets.ticketAssigned'))
+      await ticketStore.fetchTicketById(ticket.value.id)
+    } else {
+      ElMessage.error(result.message || t('errors.operationFailed'))
+    }
+  } finally {
+    assigning.value = false
+  }
+}
+
+async function assignToSelected() {
+  if (!ticket.value) return
+  assigning.value = true
+  try {
+    if (selectedTeam.value) {
+      const res = await ticketStore.assignTicketToTeam(ticket.value.id, selectedTeam.value)
+      if (res.success) {
+        ElMessage.success(t('tickets.ticketAssigned'))
+        assignDialogVisible.value = false
+        await ticketStore.fetchTicketById(ticket.value.id)
+        return
+      } else {
+        ElMessage.error(res.message || t('errors.operationFailed'))
+        return
+      }
+    }
+
+    if (selectedAssignee.value) {
+      const res = await ticketStore.assignTicket(ticket.value.id, selectedAssignee.value)
+      if (res.success) {
+        ElMessage.success(t('tickets.ticketAssigned'))
+        assignDialogVisible.value = false
+        await ticketStore.fetchTicketById(ticket.value.id)
+        return
+      } else {
+        ElMessage.error(res.message || t('errors.operationFailed'))
+        return
+      }
+    }
+
+    ElMessage.warning(t('tickets.selectAssigneeOrTeam'))
+  } finally {
+    assigning.value = false
   }
 }
 
@@ -374,6 +604,51 @@ async function submitComment() {
     submitting.value = false
   }
 }
+
+// Satisfaction survey methods
+function openSatisfactionDialog() {
+  satisfactionRating.value = 0
+  satisfactionComment.value = ''
+  satisfactionDialogVisible.value = true
+}
+
+async function submitSatisfaction() {
+  if (!ticket.value) return
+  
+  if (satisfactionRating.value === 0) {
+    ElMessage.warning(t('tickets.ratingRequired'))
+    return
+  }
+  
+  submittingSatisfaction.value = true
+  
+  try {
+    const result = await ticketStore.submitSatisfaction(
+      ticket.value.id,
+      satisfactionRating.value,
+      satisfactionComment.value || undefined
+    )
+    
+    if (result.success) {
+      ElMessage.success(t('tickets.feedbackSubmitted'))
+      satisfactionDialogVisible.value = false
+    } else {
+      ElMessage.error(result.message || t('errors.operationFailed'))
+    }
+  } finally {
+    submittingSatisfaction.value = false
+  }
+}
+
+// Auto-show satisfaction survey when ticket is closed by user confirming resolution
+watch(() => ticket.value?.status, (newStatus, oldStatus) => {
+  if (newStatus === 'closed' && oldStatus === 'resolved' && isTicketOwner.value) {
+    // Only show if not already rated
+    if (!ticket.value?.satisfactionRating) {
+      openSatisfactionDialog()
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -544,6 +819,76 @@ async function submitComment() {
         font-size: 13px;
       }
     }
+  }
+
+  .satisfaction-card {
+    margin-bottom: 24px;
+
+    .satisfaction-display {
+      .rating-display,
+      .feedback-display {
+        margin-bottom: 16px;
+
+        .label {
+          display: block;
+          font-weight: 500;
+          margin-bottom: 8px;
+          color: #606266;
+        }
+      }
+
+      .feedback-text {
+        margin: 0;
+        padding: 12px;
+        background: #f5f7fa;
+        border-radius: 4px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+    }
+
+    .satisfaction-prompt {
+      text-align: center;
+      padding: 16px 0;
+
+      p {
+        margin: 0 0 16px;
+        color: #666;
+      }
+    }
+
+    .satisfaction-pending {
+      padding: 8px 0;
+    }
+  }
+}
+
+// Satisfaction survey dialog styles
+.satisfaction-survey {
+  .survey-description {
+    margin: 0 0 24px;
+    color: #666;
+    text-align: center;
+  }
+
+  .rating-section {
+    margin-bottom: 24px;
+    text-align: center;
+
+    .rating-label {
+      display: block;
+      margin-bottom: 12px;
+      font-weight: 500;
+      font-size: 16px;
+    }
+
+    :deep(.el-rate) {
+      justify-content: center;
+    }
+  }
+
+  .feedback-section {
+    margin-top: 16px;
   }
 }
 </style>
